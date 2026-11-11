@@ -1,0 +1,22 @@
+name: token-probe
+on: workflow_dispatch
+jobs:
+  readonly:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {contents: read}
+    steps:
+      - env: {GH_TOKEN: "${{ github.token }}"}
+        run: |
+          tip=$(gh api repos/${{ github.repository }}/git/ref/heads/deploy-state/dev/us/heartbeat --jq .object.sha)
+          echo "read ok $tip"
+          gh api -X PATCH repos/${{ github.repository }}/git/refs/heads/deploy-state/dev/us/heartbeat -f sha=$tip -F force=false && echo "WRITE ALLOWED (read-only token)" || echo "write refused (read-only token)"
+  writer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {contents: write}
+    steps:
+      - env: {GH_TOKEN: "${{ github.token }}"}
+        run: |
+          tip=$(gh api repos/${{ github.repository }}/git/ref/heads/main --jq .object.sha)
+          gh api repos/${{ github.repository }}/git/refs -f ref=refs/heads/deploy-state/dev/us/by-workflow -f sha=$tip --jq .ref && echo "WORKFLOW CREATED A deploy-state BRANCH (contents: write)"
